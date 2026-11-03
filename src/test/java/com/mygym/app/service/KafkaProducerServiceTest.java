@@ -27,9 +27,7 @@ class KafkaProducerServiceTest {
     @Test
     @DisplayName("Should delegate message broadcast to kafkaTemplate sendDefault")
     void testBroadcast_Success() {
-        BroadcastMessageDto dto = new BroadcastMessageDto();
-        dto.setSenderId("ADMIN-99");
-        dto.setContent("Flash sale on memberships!");
+        BroadcastMessageDto dto = new BroadcastMessageDto("ADMIN-99", "Flash sale on memberships!", null);
 
         CompletableFuture<SendResult<String, BroadcastMessageDto>> future = new CompletableFuture<>();
         when(kafkaTemplate.sendDefault(eq("ADMIN-99"), eq(dto))).thenReturn(future);

@@ -26,10 +26,7 @@ class BroadcastControllerTest {
     @Test
     @DisplayName("Should queue broadcast message and return 200 OK")
     void testSendMessageToKafka_Success() {
-        BroadcastMessageDto messageDto = new BroadcastMessageDto();
-        messageDto.setSenderId("ADMIN-101");
-        messageDto.setContent("Gym closed for maintenance today.");
-        messageDto.setImage("maintenance.png");
+        BroadcastMessageDto messageDto = new BroadcastMessageDto("ADMIN-101", "Gym closed for maintenance today.", "maintenance.png");
 
         ResponseEntity<String> response = broadcastController.sendMessageToKafka(messageDto);
 

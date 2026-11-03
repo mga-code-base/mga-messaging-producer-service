@@ -10,9 +10,6 @@ import com.mygym.app.models.BroadcastMessageDto;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Service encapsulating asynchronous Kafka transmission logic and callback handling.
- */
 @Service
 public class KafkaProducerService {
 
@@ -23,14 +20,11 @@ public class KafkaProducerService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    /**
-     * Publishes a broadcast payload asynchronously to the configured default Kafka topic.
-     */
     public void broadcast(BroadcastMessageDto messagePayload) {
-        LOGGER.info("Preparing transport payload for sender: {}", messagePayload.getSenderId());
+        LOGGER.info("Preparing transport payload for sender: {}", messagePayload.senderId());
 
         CompletableFuture<SendResult<String, BroadcastMessageDto>> future = 
-                kafkaTemplate.sendDefault(messagePayload.getSenderId(), messagePayload);
+                kafkaTemplate.sendDefault(messagePayload.senderId(), messagePayload);
 
         future.whenComplete((result, exception) -> {
             if (exception == null) {
