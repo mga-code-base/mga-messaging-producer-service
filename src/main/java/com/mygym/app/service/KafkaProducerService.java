@@ -1,5 +1,10 @@
 package com.mygym.app.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -8,31 +13,38 @@ import org.springframework.stereotype.Service;
 
 import com.mygym.app.models.BroadcastMessageDto;
 
-import java.util.concurrent.CompletableFuture;
-
 @Service
 public class KafkaProducerService {
 
+    public static final String EVENT_ID_HEADER = "mga-event-id";
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaProducerService.class);
+
     private final KafkaTemplate<String, BroadcastMessageDto> kafkaTemplate;
 
     public KafkaProducerService(KafkaTemplate<String, BroadcastMessageDto> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void broadcast(BroadcastMessageDto messagePayload) {
-        LOGGER.info("Preparing transport payload for sender: {}", messagePayload.senderId());
+    public String broadcast(BroadcastMessageDto messagePayload) {
+        return broadcast(messagePayload, null);
+    }
 
-        CompletableFuture<SendResult<String, BroadcastMessageDto>> future = 
-                kafkaTemplate.sendDefault(messagePayload.senderId(), messagePayload);
+    public String broadcast(BroadcastMessageDto messagePayload, String idempotencyKey) {
+        String eventId = idempotencyKey == null || idempotencyKey.isBlank() ? UUID.randomUUID().toString() : idempotencyKey;
+        ProducerRecord<String, BroadcastMessageDto> record = new ProducerRecord<>(kafkaTemplate.getDefaultTopic(),
+                messagePayload.senderId(), messagePayload);
+        record.headers().add(EVENT_ID_HEADER, eventId.getBytes(StandardCharsets.UTF_8));
+        LOGGER.info("Publishing broadcast {} from sender {}", eventId, messagePayload.senderId());
 
+        CompletableFuture<SendResult<String, BroadcastMessageDto>> future = kafkaTemplate.send(record);
         future.whenComplete((result, exception) -> {
             if (exception == null) {
-                LOGGER.info("Successfully pushed payload to Kafka. Partition assigned: {}", 
-                        result.getRecordMetadata().partition());
+                LOGGER.info("Broadcast {} stored in partition {} at offset {}", eventId,
+                        result.getRecordMetadata().partition(), result.getRecordMetadata().offset());
             } else {
-                LOGGER.error("Fatal: Kafka cluster rejected payload dispatch due to: ", exception);
+                LOGGER.error("Broadcast {} was rejected by Kafka", eventId, exception);
             }
         });
+        return eventId;
     }
 }
